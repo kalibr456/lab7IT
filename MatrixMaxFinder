@@ -1,0 +1,90 @@
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.List;
+import java.util.ArrayList;
+
+public class MatrixMaxFinder {
+    public static void main(String[] args) {
+        // Инициализируем матрицу
+        int[][] matrix = new int[10][10];
+        for (int i = 0; i < matrix.length; i++) {
+            for (int j = 0; j < matrix[i].length; j++) {
+                matrix[i][j] = (int) (Math.random() * 100); // Заполняем случайными числами от 0 до 99
+            }
+        }
+
+        // Печатаем матрицу для наглядности
+        System.out.println("Matrix:");
+        for (int[] row : matrix) {
+            for (int num : row) {
+                System.out.print(num + "\t");
+            }
+            System.out.println();
+        }
+
+        // Количество потоков
+        int threadCount = 4;
+
+        // Создаем пул потоков
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+
+        // Создаем список задач
+        List<Future<Integer>> futures = new ArrayList<>();
+        int rowsPerThread = matrix.length / threadCount;
+
+        for (int i = 0; i < threadCount; i++) {
+            int startRow = i * rowsPerThread;
+            int endRow = (i == threadCount - 1) ? matrix.length : startRow + rowsPerThread;
+
+            // Добавляем задачи для поиска максимума в частях матрицы
+            Callable<Integer> task = new MatrixMaxTask(matrix, startRow, endRow);
+            futures.add(executor.submit(task));
+        }
+
+        // Поиск максимального элемента
+        int globalMax = Integer.MIN_VALUE;
+        for (Future<Integer> future : futures) {
+            try {
+                int localMax = future.get(); // Получаем максимум из задачи
+                if (localMax > globalMax) {
+                    globalMax = localMax;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Завершаем работу пула потоков
+        executor.shutdown();
+
+        // Выводим результат
+        System.out.println("Maximum Element in Matrix: " + globalMax);
+    }
+}
+
+class MatrixMaxTask implements Callable<Integer> {
+    private int[][] matrix;
+    private int startRow;
+    private int endRow;
+
+    public MatrixMaxTask(int[][] matrix, int startRow, int endRow) {
+        this.matrix = matrix;
+        this.startRow = startRow;
+        this.endRow = endRow;
+    }
+
+    @Override
+    public Integer call() {
+        int localMax = Integer.MIN_VALUE;
+        for (int i = startRow; i < endRow; i++) {
+            for (int j = 0; j < matrix[i].length; j++) {
+                if (matrix[i][j] > localMax) {
+                    localMax = matrix[i][j];
+                }
+            }
+        }
+        return localMax;
+    }
+}
