@@ -1,0 +1,81 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class WarehouseSimulation {
+    public static void main(String[] args) {
+        // Товары со своими весами
+        List<Integer> goods = List.of(30, 20, 50, 40, 10, 70, 80, 20, 60, 90, 15);
+
+        // Создаем пул из 3 грузчиков
+        ExecutorService executor = Executors.newFixedThreadPool(3);
+
+        // Создаем общий склад
+        Warehouse warehouse = new Warehouse(goods);
+
+        // Запускаем грузчиков
+        for (int i = 0; i < 3; i++) {
+            executor.submit(new LoaderRealization(warehouse));
+        }
+
+        // Завершаем работу пула после завершения всех задач
+        executor.shutdown();
+    }
+}
+
+class Warehouse {
+    private final List<Integer> goods;
+    private int currentIndex = 0;
+
+    public Warehouse(List<Integer> goods) {
+        this.goods = new ArrayList<>(goods);
+    }
+
+    // Синхронизированный метод для получения следующего груза
+    public synchronized List<Integer> getLoad() {
+        List<Integer> load = new ArrayList<>();
+        int currentWeight = 0;
+
+        while (currentIndex < goods.size() && currentWeight + goods.get(currentIndex) <= 150) {
+            int itemWeight = goods.get(currentIndex);
+            load.add(itemWeight);
+            currentWeight += itemWeight;
+            currentIndex++;
+        }
+
+        return load.isEmpty() ? null : load;
+    }
+}
+
+class LoaderRealization implements Runnable {
+    private final Warehouse warehouse;
+
+    public LoaderRealization(Warehouse warehouse) {
+        this.warehouse = warehouse;
+    }
+
+    @Override
+    public void run() {
+        while (true) {
+            List<Integer> load = warehouse.getLoad();
+
+            if (load == null) {
+                // Если больше нет товаров, выходим из потока
+                break;
+            }
+
+            // Имитация переноса груза
+            System.out.println(Thread.currentThread().getName() + " перенес груз: " + load + ", общий вес: " +
+                    load.stream().mapToInt(Integer::intValue).sum() + " кг");
+
+            try {
+                // Имитация времени на транспортировку и разгрузку
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.err.println(Thread.currentThread().getName() + " прерван.");
+            }
+        }
+    }
+}
